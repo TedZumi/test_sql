@@ -242,66 +242,119 @@ def get_table_info(table_name):
 # for Genre_N, Time, TrackCount in cursore.fetchall():
 #     print(f"{Genre_N:<50} | {Time:<10} | {TrackCount:<15}")
 
-""" Вывести треки с пометкой Дорогой или Дешевый """
-get_table_info("Track")
-print(f"\nСписок дорогих и дешевых треков:")
-cursore.execute(""" 
-    SELECT 
-        Name, 
-        Composer, 
-        UnitPrice,
-        CASE
-            WHEN UnitPrice > 1 THEN "Дорогой"
-            ELSE "Обычный"
-        END AS PriceCategory
-    FROM Track
-    LIMIT 50  
-""")
-print("-"*150)
-print(f"{'Название':<50} | {'Автор':<100} | {'Цена':<15} | {'Ценовая категория':<15}")
-print("-"*150)
-for Name, Composer, UnitPrice, PriceCategory in cursore.fetchall():
-    print(f"{Name:<50} | {Composer:<100} | {UnitPrice:<15} | {PriceCategory:<15}")
+# """ Вывести треки с пометкой Дорогой или Дешевый """
+# get_table_info("Track")
+# print(f"\nСписок дорогих и дешевых треков:")
+# cursore.execute(""" 
+#     SELECT 
+#         Name, 
+#         Composer, 
+#         UnitPrice,
+#         CASE
+#             WHEN UnitPrice > 1 THEN "Дорогой"
+#             ELSE "Обычный"
+#         END AS PriceCategory
+#     FROM Track
+#     LIMIT 50  
+# """)
+# print("-"*150)
+# print(f"{'Название':<50} | {'Автор':<100} | {'Цена':<15} | {'Ценовая категория':<15}")
+# print("-"*150)
+# for Name, Composer, UnitPrice, PriceCategory in cursore.fetchall():
+#     print(f"{Name:<50} | {Composer:<100} | {UnitPrice:<15} | {PriceCategory:<15}")
     
-print("\nТреки с композитором или 'Неизвестен':")
+# print("\nТреки с композитором или 'Неизвестен':")
+# cursore.execute(""" 
+#     SELECT 
+#         Name, 
+#         CASE
+#             WHEN Composer IS NULL THEN "Неизвестный исполнитель"
+#             ELSE Composer
+#         END AS ComposerName
+#     FROM Track
+#     LIMIT 500  
+# """)
+# print("-"*150)
+# print(f"{'Название':<50} | {'Автор':<100}")
+# print("-"*150)
+# for Name, ComposerName in cursore.fetchall():
+#     print(f"{Name:<50} | {ComposerName:<100}")
+
+
+# """ Расчет общей выручки с условиями:
+# Если цена трека меньше 0.99, считаем её как 0.99 (минимальная цена).
+# Если трек длинный (> 5 минут), добавляем к цене наценку 0.50 цента."""
+# print("\nОбщая выручка с условиями:")
+# cursore.execute("""
+#     SELECT
+#         SUM(
+#             (CASE
+#                 WHEN Track.UnitPrice < 0.99 THEN 0.99
+#                 ELSE Track.UnitPrice
+#             END
+#             +
+#             CASE
+#                 WHEN Track.Milliseconds / 60000 > 5 THEN 0.50
+#                 ELSE 0
+#             END)
+#             * InvoiceLine.Quantity
+#         ) AS TotalRevenue
+#     FROM Track
+#     JOIN InvoiceLine
+#         ON InvoiceLine.TrackId = Track.TrackId;
+# """)
+# total = cursore.fetchone()[0]
+# print(f"  Итоговая выручка с наценками: ${total:.2f}")
+
+
+""" Простой подзапрос: Найти треки дороже средней цены всех треков. """
+get_table_info("Track")
+print(f"\nТреки дороже средней цены всех треков:")
 cursore.execute(""" 
     SELECT 
-        Name, 
-        CASE
-            WHEN Composer IS NULL THEN "Неизвестный исполнитель"
-            ELSE Composer
-        END AS ComposerName
+        Name AS TrackName,
+        UnitPrice AS Price
     FROM Track
-    LIMIT 500  
+    WHERE UnitPrice > (SELECT AVG(UnitPrice) FROM Track);
 """)
 print("-"*150)
-print(f"{'Название':<50} | {'Автор':<100}")
+print(f"{'Название':<50} | {'Цена':<100}")
 print("-"*150)
-for Name, ComposerName in cursore.fetchall():
-    print(f"{Name:<50} | {ComposerName:<100}")
+for NameTrack, PriseTrack in cursore.fetchall():
+    print(f"{NameTrack:<50} | {PriseTrack:<100}")
 
-
-""" Расчет общей выручки с условиями:
-Если цена трека меньше 0.99, считаем её как 0.99 (минимальная цена).
-Если трек длинный (> 5 минут), добавляем к цене наценку 0.50 цента."""
-print("\nОбщая выручка с условиями:")
-cursore.execute("""
-    SELECT
-        SUM(
-            (CASE
-                WHEN Track.UnitPrice < 0.99 THEN 0.99
-                ELSE Track.UnitPrice
-            END
-            +
-            CASE
-                WHEN Track.Milliseconds / 60000 > 5 THEN 0.50
-                ELSE 0
-            END)
-            * InvoiceLine.Quantity
-        ) AS TotalRevenue
-    FROM Track
-    JOIN InvoiceLine
-        ON InvoiceLine.TrackId = Track.TrackId;
+""" Коррелированный подзапрос: Для каждого альбома вывести его название и количество треков в нем. """
+get_table_info("Album")
+get_table_info("Track")
+print(f"\nДля каждого альбома название и количество треков в нем:")
+cursore.execute(""" 
+    SELECT 
+        a.Title,
+        (SELECT COUNT(*) FROM Track t WHERE a.AlbumId = t.AlbumId) AS CountTrack
+    FROM Album a
+    ORDER BY CountTrack DESC;
 """)
-total = cursore.fetchone()[0]
-print(f"  Итоговая выручка с наценками: ${total:.2f}")
+print("-"*150)
+print(f"{'Название альбома':<100} | {'Количество треков в альбоме':<50}")
+print("-"*150)
+for Title, CountTrack in cursore.fetchall():
+    print(f"{Title:<100} | {CountTrack:<50}")
+    
+""" EXISTS: Найти клиентов, у которых есть хотя бы один счет. """
+get_table_info("Customer")
+get_table_info("Invoice")
+print(f"\nКлиенты с хотя бы 1-м счетом:")
+cursore.execute(""" 
+    SELECT 
+        c.FirstName,
+        c.LastName,
+        (SELECT COUNT(*) FROM Invoice i WHERE i.CustomerId = c.CustomerId)  AS InvoiceCount
+    FROM Customer c
+    WHERE EXISTS (SELECT 1 FROM Invoice i WHERE i.CustomerId = c.CustomerId)
+    ORDER BY InvoiceCount DESC;
+""")
+print("-"*150)
+print(f"{'Имя':<50} | {'Фамилия':<50} | {'Число заказов':<50} ")
+print("-"*150)
+for FirstName, LastName, InvoiceCount in cursore.fetchall():
+    print(f"{FirstName:<50} | {LastName:<50} | {InvoiceCount:<50}")
