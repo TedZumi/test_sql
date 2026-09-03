@@ -29,23 +29,18 @@ class DataBase:
     def close(self):
         self.conn.close()
 
-# --- ВАША БАЗА ЗДЕСЬ ---
-
 db = DataBase('my_training.db')
 
-# Создаете таблицу
 db.create_table('students', 
                 {'id': 'INTEGER', 'name': 'TEXT', 'score': 'INTEGER'}, 
                 pk='id')
 
-# Заполняете данными
 db.insert_many('students', [
     {'name': 'Анна', 'score': 95},
     {'name': 'Борис', 'score': 85},
     {'name': 'Виктор', 'score': 90},
 ])
 
-# Проверяете
 print(db.query('SELECT * FROM students ORDER BY score DESC;'))
 
 db.close()
